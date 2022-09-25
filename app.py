@@ -9,7 +9,25 @@ model1=joblib.load('forestfiremodel.pkl')
 camera=cv2.VideoCapture(0)
 fire_cascade = cv2.CascadeClassifier('fire_detection.xml')
 m2=joblib.load('m2.pkl')
+model=joblib.load('m1.pkl')
+def generate_frames():
+    while True:
+        success,frame=camera.read()
+        if not success:
+            break
+        else:
 
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            fire = fire_cascade.detectMultiScale(frame, 1.2, 5)
+            for (x,y,w,h) in fire:
+                cv2.rectangle(frame,(x-20,y-20),(x+w+20,y+h+20),(255,0,0),2)
+                roi_gray = gray[y:y+h, x:x+w]
+                roi_color = frame[y:y+h, x:x+w]
+                playsound('audio.mp3')
+            ret,buffer=cv2.imencode('.jpg',frame)
+            frame=buffer.tobytes()
+            yield(b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
 
@@ -19,6 +37,9 @@ m2=joblib.load('m2.pkl')
 @app.route('/')
 def hello_world():
     return render_template("index.html")
+
+
+
 @app.route('/output')
 def output():
     return render_template("index.html")
@@ -35,36 +56,13 @@ def output():
 
 
     
-def generate_frames():
-    while True:
+
+
             
-        ## read the camera frame
-        success,frame=camera.read()
-        if not success:
-            break
-        else:
-
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            fire = fire_cascade.detectMultiScale(frame, 1.2, 5)
-            for (x,y,w,h) in fire:
-                cv2.rectangle(frame,(x-20,y-20),(x+w+20,y+h+20),(255,0,0),2)
-                roi_gray = gray[y:y+h, x:x+w]
-                roi_color = frame[y:y+h, x:x+w]
-                
-                playsound('audio.mp3')
-               
-
-            ret,buffer=cv2.imencode('.jpg',frame)
-            frame=buffer.tobytes()
-
-
-
-            yield(b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 @app.route('/wild1')
 def wild1():
     return render_template('wild1.html')
-model=joblib.load('m1.pkl')
+
 
 @app.route('/wild',methods=['POST','GET'])
 def wild():
@@ -73,7 +71,6 @@ def wild():
     p=model.predict(fin)
     i=p[0]
     output='{}'.format(i)
-    print(output)
     return render_template('output.html',pred="As per the given coditions of the forest ,\n The' {} 'are in danger  ".format(output))
 
 
@@ -84,8 +81,7 @@ def predict1():
 def predict():
     int_features=[float(x) for x in request.form.values()]
     final=[np.array(int_features)]
-    print(int_features)
-    print(final)
+    
     prediction=model1.predict_proba(final)
     output='{0:.{1}f}'.format(prediction[0][1], 2)
 
